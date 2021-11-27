@@ -1,10 +1,13 @@
 """
-                                                                                   Version 1.1.3 (20210820)
+                                                                                   Version 2.0.0 (20211127)
 Joystick Gremlin plugin for changing Virpil device's LED colors.
 It uses Virpil's software to talk to your devices.
 
 You can send aUEC tips in Star Citizen to IsaacHeron. Or gift me a Carrack :D
 Contact me in SC, E:D, on the Virpil forums or /r/HOTAS Discord (IsaacHeron everywhere). Isaac-H on Reddit.
+Enhancements by Oliver Ernster aka Cmdr ASmallFurryRodent for faster LED responses and improved delay handling.
+Also made it a class and did some refactoring to make the code more elegant.
+I can also be contacted on /r/HOTASDiscord or in a lot of E:D discords.
 
 Or thank the original script author, Painter, on whose plugin this one is based.
 
@@ -134,7 +137,8 @@ Control Panel #1
 
 
 Control Panel #2
- 
+
+
 - Aircraft LEDs
 	Top         LED ID: 9
 	Middle      LED ID: 10
@@ -143,6 +147,10 @@ Control Panel #2
 	Gear middle LED ID: 13
 	Gear right  LED ID: 14
 	Flaps right LED ID: 15
+
+- Note: if using aux to connect your CPv2 to your CM3 the aircraft LED IDs are: 29-35
+- Thought I haven't tested them, I suspect the other LEDs on the panel are also higher numbers;
+recomment you experiment.
 
 - Button LEDs
 	B1 LED ID: 6
@@ -171,12 +179,7 @@ from datetime import datetime, timedelta
 from time import sleep
 
 import subprocess
-
-
-
-
-
-
+import threading
 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 ### ###               Path to Virpil LED program VPC_LED_Control.exe                ### ###
@@ -189,13 +192,6 @@ pathToProgram = "C:/Program Files (x86)/VPC Software Suite/tools/VPC_LED_Control
 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###   Enjoy the blinkenlights!  ### 
-
-
-
-
-
-
-
 
 cv = ["00", "40", "80", "FF"]
 deviceDict = {}
@@ -225,7 +221,7 @@ displayDelay = IntegerVariable(
         "Minimum time im milliseconds the color will be changed/shown for.\nDelays the following color changes by the set amount of ms\nand might freeze/delay virtual Gremlin input.\nKeep at default 1ms if possible.",
         0,
 	0,
-	3000
+	25000
 )
 
 changeOnActivation = BoolVariable(
@@ -289,65 +285,70 @@ defaultBlue = IntegerVariable(
 )
 
 
-defaultLED = "01"
-gNextColourTime = None
-if displayDelay.value > 0:
-	gNextColourTime = datetime.utcnow()
-gColourStack = 0
+class LEDHandler(object):
+	def __init__(self, event, vjoy, joy):
+		self.event = event
+		self.vjoy = vjoy
+		self.joy = joy
+		self.colourStack = 0
+		self.nextColourTime = None
+		if displayDelay.value > 0:
+			self.nextColourTime = datetime.utcnow()
+		self.colourMain()
+		
+	def colourMain(self):
+		buGuid = f"{ledDeviceInput.device_guid}"
+		if buGuid not in deviceDict:
+			# run once, or if device has been added at run time
+			self.listDevices()
+
+		vID = deviceDict[ buGuid ][ 'vID' ]
+		pID = deviceDict[ buGuid ][ 'dID' ]
+
+		ledArray = ledNumbers.value.split()
+
+		thisTime = datetime.utcnow()
+		gNextColourTime = datetime.utcnow()
+		if self.event.is_pressed and changeOnActivation.value:
+			for ledNumber in ledArray:
+				self.doColour(vid=vID, pid=pID, led=ledNumber,
+					r=cv[ colourRed.value ], g=cv[ colourGreen.value ], b=cv[ colourBlue.value ])
+		if displayDelay.value > 0:
+			gNextColourTime = datetime.utcnow() + timedelta(milliseconds=displayDelay.value)
+		while thisTime < gNextColourTime:
+			sleep( 0.01 )
+			thisTime = datetime.utcnow()
+		if not self.event.is_pressed and changeOnDeactivation.value:
+			for ledNumber in ledArray:
+				self.doColour(vid=vID, pid=pID, led=ledNumber,
+					r=cv[ defaultRed.value ], g=cv[ defaultGreen.value ], b=cv[ defaultBlue.value ])
+
+	def doColour(self, vid, pid, led="01", r=cv[ 0 ], g=cv[ 0 ], b=cv[ 0 ]):
+		if self.colourStack > 0:
+			# getting too complex
+			return
+		self.colourStack += 1
+		
+		run = f"{pathToProgram} {vid} {pid} {led} {r} {g} {b}"
+		
+		# gremlin.util.log( f"run -> { run }" )
+		subprocess.Popen( run, creationflags=subprocess.CREATE_NEW_CONSOLE )
+		self.colourStack -= 1
+
+	def listDevices(self):
+		gremlin.util.log( "in ListDevices" )
+		devs = gremlin.joystick_handling.physical_devices()
+		for d in devs:
+			dGuid = f"{ d.__dict__['device_guid'] }"
+			vID = f"{d.__dict__['vendor_id']:04x}"
+			dID = f"{d.__dict__['product_id']:04x}"
+			deviceDict[ dGuid ]= { 'vID': vID, 'dID' : dID }
+
 
 bPress = buttonPress.create_decorator(mode.value)
 
 @bPress.button(buttonPress.input_id)
 def myColour(event, vjoy, joy):
-
-	buGuid = f"{ledDeviceInput.device_guid}"
-	if buGuid not in deviceDict:
-		# run once, or if device has been added at run time
-		listDevices()
-
-	vID = deviceDict[ buGuid ][ 'vID' ]
-	pID = deviceDict[ buGuid ][ 'dID' ]
-
-	ledArray = ledNumbers.value.split()
-	for ledNumber in ledArray:
-		if event.is_pressed and changeOnActivation.value:
-			doColour(vid=vID, pid=pID, led=ledNumber,
-				r=cv[ colourRed.value ], g=cv[ colourGreen.value ], b=cv[ colourBlue.value ])
-		elif not event.is_pressed and changeOnDeactivation.value:
-			doColour(vid=vID, pid=pID, led=ledNumber,
-				r=cv[ defaultRed.value ], g=cv[ defaultGreen.value ], b=cv[ defaultBlue.value ])
-
-def doColour( vid, pid, led=defaultLED, r=cv[ 0 ], g=cv[ 0 ], b=cv[ 0 ] ):
-	global gNextColourTime
-	global gColourStack
-	if gColourStack > 0:
-		# getting too complex
-		return
-	gColourStack += 1
-	
-	if displayDelay.value > 0:
-		thisTime = datetime.utcnow()
-		while thisTime < gNextColourTime:
-			sleep( 0.01 )
-			thisTime = datetime.utcnow()
-		
-	run = f"{pathToProgram} {vid} {pid} {led} {r} {g} {b}"
-	
-	# gremlin.util.log( f"run -> { run }" )
-	subprocess.Popen( run, creationflags=subprocess.CREATE_NEW_CONSOLE )
-	gColourStack -= 1
-
-	if displayDelay.value > 0:
-		gNextColourTime = datetime.utcnow() + timedelta(milliseconds=displayDelay.value)
-
-def listDevices():
-	gremlin.util.log( "in ListDevices" )
-	devs = gremlin.joystick_handling.physical_devices()
-	for d in devs:
-		dGuid = f"{ d.__dict__['device_guid'] }"
-		vID = f"{d.__dict__['vendor_id']:04x}"
-		dID = f"{d.__dict__['product_id']:04x}"
-		deviceDict[ dGuid ]= { 'vID': vID, 'dID' : dID }
-
+	lh = LEDHandler(event, vjoy, joy)
 
 # EOF
