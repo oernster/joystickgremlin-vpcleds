@@ -28,6 +28,8 @@ Choose your colours; experimentation is key here, the possible values 0, 1, 2, 3
 
 If you want a momentary button to be stateful then tick the retain state button and set colour values for the second state press.
 
+You can also define the ability to blink between LED colour states and set a timer for this.  However, at present, there is no way to disable this once started.  TBD.
+
 Repeat the creation of an instance and setup for each button press on your device that you want.
 
 Now save your profile, go into options in Joystick Gremlin and set it up to auto turn on the profile etc if you want that on launch.  Do NOT tick the checkbox for launching with start of windows - it will crash; this is an issue with Joystick Gremlin and I can't do anything about that.
