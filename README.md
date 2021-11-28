@@ -1,7 +1,7 @@
 # joystickgremlin_vpcleds
 Plugin to Joystick Gremlin to enable control over Virpil control panel LEDs
 
-# Version 2.4.0
+# Version 2.5.0
 
 # Features: 
 1) Change one or more LED colours on activation or deactivation of a button, optionally with timeout.
