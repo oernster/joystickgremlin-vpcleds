@@ -1,14 +1,17 @@
 """
-                                                                                   Version 2.1.0 (20211128)
+                                                                                   Version 2.2.0 (20211127)
 Joystick Gremlin plugin for changing Virpil device's LED colors.
 It uses Virpil's software to talk to your devices.
 
 You can send aUEC tips in Star Citizen to IsaacHeron. Or gift me a Carrack :D
 Contact me in SC, E:D, on the Virpil forums or /r/HOTAS Discord (IsaacHeron everywhere). Isaac-H on Reddit.
+
 Enhancements by Oliver Ernster aka Cmdr ASmallFurryRodent for faster LED responses and improved delay handling.
 Also made it a class and did some refactoring to make the code more elegant.
-Just added multithreading capability so that we can have simultaneous timed LED control.
-I can also be contacted on /r/HOTASDiscord or in a lot of E:D discords.
+NEW: Added stateful button momentary presses so you can, for example, press a momentary button to set landing 
+gear LEDs and they will stay on until you press the button again; basically, sometimes you don't want it to 
+timeout or immediately turn off. 
+I can be contacted on /r/HOTASDiscord or in a lot of E:D discords.
 
 Or thank the original script author, Painter, on whose plugin this one is based.
 
@@ -88,6 +91,18 @@ CHANGE ON INPUT DE/ACTIVATION
 
 DE/ACTIVATION: RED/GREEN/BLUE
   The color values for the de/activation change.
+  You define the RGB color brightness for each of the colors by setting a value.
+  The Virpil LED tool allows one of four values for each color: 
+    Off: 0 - 0% in Virpil config tool
+    Low: 1 - 30%
+    Mid: 2 - 60%
+    Max: 3 - 100%
+
+TOGGLE RETAIN STATE OF LEDS UNTIL PRESSED AGAIN
+  Changes the LED to the activation color when the input is pressed. On second press of the button, state 2 colour values will be used.
+
+STATE 2: RED/GREEN/BLUE
+  The color values for state 2 of a momentary button press.
   You define the RGB color brightness for each of the colors by setting a value.
   The Virpil LED tool allows one of four values for each color: 
     Off: 0 - 0% in Virpil config tool
@@ -282,6 +297,40 @@ defaultBlue = IntegerVariable(
 	3
 )
 
+ledState = BoolVariable(
+		"Retain state of LEDs until pressed again",
+		"Keeps LEDs in activation colour state until primary button pressed again to revert to second state.  (Deactivation will be ignored)",
+		False
+)
+
+state2ColourRed = IntegerVariable(
+		"State 2: Red",
+		"Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
+		0,
+	0,
+	3
+)
+
+state2ColourGreen = IntegerVariable(
+		"State 2: Green",
+		"Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
+		0,
+	0,
+	3
+)
+
+state2ColourBlue = IntegerVariable(
+		"State 2: Blue",
+		"Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
+		0,
+	0,
+	3
+)
+
+
+
+
+
 class MThreading(object):
     def __init__(self):
         self.threads = []
@@ -295,6 +344,8 @@ class MThreading(object):
 
 
 MT = MThreading()
+
+ledStateDict = {}
 
 
 class LEDHandler(object):
@@ -311,7 +362,33 @@ class LEDHandler(object):
 	def init(self):
 		self.cv = ["00", "40", "80", "FF"]
 		self.deviceDict = {}
-				
+
+	def handleLEDState(self):
+		if ledState:
+			if ledNumbers in ledStateDict.keys():
+				if ledStateDict[ledNumbers]["state"] == 1: 
+					ledStateDict[ledNumbers] = { "state": 2,
+												"red": state2ColourRed,
+												"green": state2ColourGreen,
+												"blue": state2ColourBlue }
+				elif ledStateDict[ledNumbers]["state"] == 2: 
+					ledStateDict[ledNumbers] = { "state": 1,
+												"red": colourRed,
+												"green": colourGreen,
+												"blue": colourBlue }
+			else:
+				ledStateDict[ledNumbers] = { "state": 1,
+											"red": colourRed,
+											"green": colourGreen,
+											"blue": colourBlue }
+			self.colourRed = ledStateDict[ledNumbers]["red"]
+			self.colourGreen = ledStateDict[ledNumbers]["green"]
+			self.colourBlue = ledStateDict[ledNumbers]["blue"]
+		else:
+			self.colourRed = colourRed
+			self.colourGreen = colourGreen
+			self.colourBlue = colourBlue
+
 	def colourMain(self):
 		self.buGuid = f"{ledDeviceInput.device_guid}"
 		if self.buGuid not in self.deviceDict:
@@ -326,9 +403,11 @@ class LEDHandler(object):
 		thisTime = datetime.utcnow()
 		self.nextColourTime = datetime.utcnow()
 		if self.event.is_pressed and changeOnActivation.value:
+			if ledState:
+				self.handleLEDState()
 			for ledNumber in ledArray:
 				self.doColour(vid=vID, pid=pID, led=ledNumber,
-					r=self.cv[ colourRed.value ], g=self.cv[ colourGreen.value ], b=self.cv[ colourBlue.value ])
+					r=self.cv[ self.colourRed.value ], g=self.cv[ self.colourGreen.value ], b=self.cv[ self.colourBlue.value ])
 		if displayDelay.value > 0:
 			self.nextColourTime = datetime.utcnow() + timedelta(milliseconds=displayDelay.value)
 		while thisTime < self.nextColourTime:
