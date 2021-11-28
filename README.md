@@ -1,6 +1,8 @@
 # joystickgremlin_vpcleds
 Plugin to Joystick Gremlin to enable control over Virpil control panel LEDs
 
+FYI there is currently a relative import bug in the code.  This is probably the most DIFFICULT problem to solve in Python but I will address is ASAP.
+
 # Instructions for use
 Download the VPC_LEDs.py file and then put it somewhere safe on your PC.
 
