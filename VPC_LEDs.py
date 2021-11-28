@@ -408,6 +408,7 @@ class LEDHandler(object):
 			self.colourBlue = colourBlue
 
 	def change_leds(self, vID, pID, ledNumbers):
+		gremlin.util.log( "in change_leds")
 		self.handle_led_state(blinking=False)
 		ledArray = ledNumbers.value.split()
 		for ledNumber in ledArray:
@@ -415,6 +416,7 @@ class LEDHandler(object):
 				r=self.cv[ self.colourRed.value ], g=self.cv[ self.colourGreen.value ], b=self.cv[ self.colourBlue.value ])
 
 	def pause(self, timer, thisTime, nextColourTime):
+		gremlin.util.log( "in pause")
 		if timer > 0:
 			nextColourTime = datetime.utcnow() + timedelta(milliseconds=timer)
 		while thisTime < nextColourTime:
@@ -429,8 +431,8 @@ class LEDHandler(object):
 		self.stop_blinking = False
 		if self.event.is_pressed and changeOnActivation.value:
 			self.change_leds(vID, pID, ledNumbers)
-			self.pause(timer, thisTime, nextColourTime)
-			# self.stop_blinking = True
+		self.pause(timer, thisTime, nextColourTime)
+		# self.stop_blinking = True
 		if blink.value:
 			while not self.stop_blinking:
 				self.change_leds(vID, pID, ledNumbers)
