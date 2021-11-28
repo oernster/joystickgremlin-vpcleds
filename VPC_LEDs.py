@@ -1,5 +1,5 @@
 """
-                                                                                   Version 2.0.0 (20211127)
+                                                                                   Version 2.1.0 (20211128)
 Joystick Gremlin plugin for changing Virpil device's LED colors.
 It uses Virpil's software to talk to your devices.
 
@@ -7,6 +7,7 @@ You can send aUEC tips in Star Citizen to IsaacHeron. Or gift me a Carrack :D
 Contact me in SC, E:D, on the Virpil forums or /r/HOTAS Discord (IsaacHeron everywhere). Isaac-H on Reddit.
 Enhancements by Oliver Ernster aka Cmdr ASmallFurryRodent for faster LED responses and improved delay handling.
 Also made it a class and did some refactoring to make the code more elegant.
+Just added multithreading capability so that we can have simultaneous timed LED control.
 I can also be contacted on /r/HOTASDiscord or in a lot of E:D discords.
 
 Or thank the original script author, Painter, on whose plugin this one is based.
