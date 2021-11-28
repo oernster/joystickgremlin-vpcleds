@@ -6,12 +6,17 @@ It uses Virpil's software to talk to your devices.
 You can send aUEC tips in Star Citizen to IsaacHeron. Or gift me a Carrack :D
 Contact me in SC, E:D, on the Virpil forums or /r/HOTAS Discord (IsaacHeron everywhere). Isaac-H on Reddit.
 
-Enhancements by Oliver Ernster aka Cmdr ASmallFurryRodent for faster LED responses and improved delay handling.
-Also made it a class and did some refactoring to make the code more elegant.
-NEW: Added stateful button momentary presses so you can, for example, press a momentary button to set landing 
-gear LEDs and they will stay on until you press the button again; basically, sometimes you don't want it to 
-timeout or immediately turn off.  Also NEW: Blinking LED(s) capability added.
+Enhancements by Oliver Ernster aka Cmdr ASmallFurryRodent
 I can be contacted on /r/HOTASDiscord or in a lot of E:D discords.
+------------------------------------------------------------------
+a) Significantly faster LED responses and improved delay handling.
+b) Made it a class and did some refactoring to make the code more elegant.
+c) Added stateful button momentary presses so you can, for example, press a momentary button to set landing 
+gear LEDs and they will stay on until you press the button again; basically, sometimes you don't want it to 
+timeout or immediately turn off.  
+d) Blinking LED(s) capability added with optional timer setting.  Now with disable blinking and hold/momentary 
+button options for however you want to control blinking.
+
 
 Or thank the original script author, Painter, on whose plugin this one is based.
 
@@ -315,6 +320,12 @@ blink = BoolVariable(
 		False
 )
 
+blinkHoldButton = BoolVariable(
+		"Blink button hold or momentary; Hold = checked",
+		"Whether the blink enable button is hold as a switch or is a momentary button.  If hold then check the tick box.",
+		False
+)
+
 blinkTimer = IntegerVariable(
 		"Blink Timer (ms)",
 		"Time im milliseconds between blink state changes of LED colours.",
@@ -353,7 +364,7 @@ class MThreading(object):
         self.threads = []
 
     def _run_thread(self, fn, *args, **kwargs):
-        #self.threads = [t for t in self.threads if t.is_alive()]
+        self.threads = [t for t in self.threads if t.is_alive()]
         thread = threading.Thread(target=fn, args=args, kwargs=kwargs)
         thread.daemon = True
         thread.start()
@@ -366,7 +377,12 @@ MT = MThreading()
 class LEDHandler(object):
 	def __init__(self):
 		gremlin.util.log( "in LEDHandler contructor" )
-		self.ledStateDict = {}
+		self.led_state = {}
+		self.led_state[ledNumbers] = { "state": 1,
+										  "red": colourRed,
+										  "green": colourGreen,
+										  "blue": colourBlue,
+										  "first_blink": True }
 		
 	def init(self, event, vjoy, joy):
 		gremlin.util.log( "in init" )
@@ -379,29 +395,27 @@ class LEDHandler(object):
 		
 	def handle_led_state(self, blinking=False):
 		gremlin.util.log( "in handle_led_state" )
-		if ledState:
-			if ledNumbers in self.ledStateDict.keys():
-				if self.ledStateDict[ledNumbers]["state"] == 1: 
-					self.ledStateDict[ledNumbers] = { "state": 2,
+		if ledState.value:
+			if ledNumbers in self.led_state.keys():
+				if self.led_state[ledNumbers]["state"] == 1: 
+					(self.led_state[ledNumbers]).update( { "state": 2,
 												 "red": state2ColourRed,
 												 "green": state2ColourGreen,
-												 "blue": state2ColourBlue,
-												 "blinking": blinking }
-				elif self.ledStateDict[ledNumbers]["state"] == 2: 
-					self.ledStateDict[ledNumbers] = { "state": 1,
+												 "blue": state2ColourBlue } )
+				elif self.led_state[ledNumbers]["state"] == 2: 
+					(self.led_state[ledNumbers]).update({ "state": 1,
 												 "red": colourRed,
 												 "green": colourGreen,
-												 "blue": colourBlue,
-												 "blinking": blinking }
+												 "blue": colourBlue } )
 			else:
-				self.ledStateDict[ledNumbers] = { "state": 1,
+				self.led_state[ledNumbers] = { "state": 1,
 											"red": colourRed,
 											"green": colourGreen,
 											"blue": colourBlue,
-											"blinking": blinking }
-			self.colourRed = self.ledStateDict[ledNumbers]["red"]
-			self.colourGreen = self.ledStateDict[ledNumbers]["green"]
-			self.colourBlue = self.ledStateDict[ledNumbers]["blue"]
+											"first_blink": True }
+			self.colourRed = self.led_state[ledNumbers]["red"]
+			self.colourGreen = self.led_state[ledNumbers]["green"]
+			self.colourBlue = self.led_state[ledNumbers]["blue"]
 		else:
 			self.colourRed = colourRed
 			self.colourGreen = colourGreen
@@ -428,16 +442,28 @@ class LEDHandler(object):
 		ledArray = ledNumbers.value.split()
 		thisTime = datetime.utcnow()
 		nextColourTime = datetime.utcnow()
-		self.stop_blinking = False
 		if self.event.is_pressed and changeOnActivation.value:
-			self.change_leds(vID, pID, ledNumbers)
+			if not blink.value:
+				self.change_leds(vID, pID, ledNumbers)
+			elif self.led_state[ledNumbers]["first_blink"]:
+				self.led_state[ledNumbers]["first_blink"] = False
+				self.stop_blinking = False
+			else:
+				self.stop_blinking = True
+				self.led_state[ledNumbers]["first_blink"] = True
 		self.pause(timer, thisTime, nextColourTime)
-		# self.stop_blinking = True
+		if not self.event.is_pressed and changeOnDeactivation.value:
+			if blinkHoldButton.value:
+				self.stop_blinking = True
+			if not blink.value:
+				for ledNumber in ledArray:
+					self.doColour(vid=vID, pid=pID, led=ledNumber,
+						r=self.cv[ defaultRed.value ], g=self.cv[ defaultGreen.value ], b=self.cv[ defaultBlue.value ])
 		if blink.value:
 			while not self.stop_blinking:
 				self.change_leds(vID, pID, ledNumbers)
 				self.pause(blinkTimer.value, thisTime, nextColourTime)
-		if not self.event.is_pressed and changeOnDeactivation.value and not blink.value:
+			gremlin.util.log("setting leds because of stopping blinking")
 			for ledNumber in ledArray:
 				self.doColour(vid=vID, pid=pID, led=ledNumber,
 					r=self.cv[ defaultRed.value ], g=self.cv[ defaultGreen.value ], b=self.cv[ defaultBlue.value ])
@@ -451,11 +477,7 @@ class LEDHandler(object):
 		else:
 			timer = blinkTimer.value
 			self.process_led_changes(vID, pID, ledNumbers, timer)				
-		ledArray = ledNumbers.value.split()
-		for ledNumber in ledArray:
-			self.doColour(vid=vID, pid=pID, led=ledNumber,
-				r=self.cv[ defaultRed.value ], g=self.cv[ defaultGreen.value ], b=self.cv[ defaultBlue.value ])
-
+		
 	def colour_main(self):
 		gremlin.util.log( "in colour_main" )
 		self.buGuid = f"{ledDeviceInput.device_guid}"
