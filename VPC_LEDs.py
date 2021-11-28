@@ -187,15 +187,14 @@ recomment you experiment.
 *** *** end of documentation *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
 
 """
+from datetime import datetime, timedelta
+from time import sleep
+import subprocess
 
 import gremlin
 from gremlin.user_plugin import *
 
-from datetime import datetime, timedelta
-from time import sleep
-
-import subprocess
-import threading
+from multithreader import MT
 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 ### ###               Path to Virpil LED program VPC_LED_Control.exe                ### ###
@@ -327,24 +326,6 @@ state2ColourBlue = IntegerVariable(
 	3
 )
 
-
-
-
-
-class MThreading(object):
-    def __init__(self):
-        self.threads = []
-
-    def _run_thread(self, fn, *args, **kwargs):
-        self.threads = [t for t in self.threads if t.is_alive()]
-        thread = threading.Thread(target=fn, args=args, kwargs=kwargs)
-        thread.daemon = True
-        thread.start()
-        self.threads.append(thread)
-
-
-MT = MThreading()
-
 ledStateDict = {}
 
 
@@ -441,7 +422,6 @@ class LEDHandler(object):
 
 
 bPress = buttonPress.create_decorator(mode.value)
-MT = MThreading()
 
 @bPress.button(buttonPress.input_id)
 def myColour(event, vjoy, joy):
