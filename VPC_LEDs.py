@@ -193,96 +193,107 @@ pathToProgram = "C:/Program Files (x86)/VPC Software Suite/tools/VPC_LED_Control
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###   Enjoy the blinkenlights!  ### 
 
-cv = ["00", "40", "80", "FF"]
-deviceDict = {}
-
-mode = ModeVariable("Mode", "The mode in which to use this mapping")
-# mode.value defaults to earliest in alphabet, not to current instance name nor to root mode
-
 buttonPress = PhysicalInputVariable(
-        "Button",
-        "Button that triggers the color change.",
-        [gremlin.common.InputType.JoystickButton]
+		"Button",
+		"Button that triggers the color change.",
+		[gremlin.common.InputType.JoystickButton]
 )
 
 ledDeviceInput = PhysicalInputVariable(
-        "LED Device",
-        "The device with the LED to be changed. Press ANY button on that device.",
-        [gremlin.common.InputType.JoystickButton]
+		"LED Device",
+		"The device with the LED to be changed. Press ANY button on that device.",
+		[gremlin.common.InputType.JoystickButton]
 )
+
+mode = ModeVariable("Mode", "The mode in which to use this mapping")
+		# mode.value defaults to earliest in alphabet, not to current instance name nor to root mode
 
 ledNumbers = StringVariable(
-	"LED numbers",
-        "LEDs to be lit, space seperated list.\nDoes NOT correspond to the button numbers on the device\nor VPC Config tool! See plugin code for details!",
-)
+			"LED numbers",
+				"LEDs to be lit, space seperated list.\nDoes NOT correspond to the button numbers on the device\nor VPC Config tool! See plugin code for details!",
+		)
 
 displayDelay = IntegerVariable(
-        "Delay (ms)",
-        "Minimum time im milliseconds the color will be changed/shown for.\nDelays the following color changes by the set amount of ms\nand might freeze/delay virtual Gremlin input.\nKeep at default 1ms if possible.",
-        0,
+		"Delay (ms)",
+		"Minimum time im milliseconds the color will be changed/shown for.\nDelays the following color changes by the set amount of ms\nand might freeze/delay virtual Gremlin input.\nKeep at default 1ms if possible.",
+		0,
 	0,
 	25000
 )
 
 changeOnActivation = BoolVariable(
-        "Change on input activation",
-        "Changes the color to the values below when the input is pressed.\nNOTE: Might not show correctly or even reset when using the cogwheel to edit another instance.\nAdd an LED, configure, and save profile. Reload before making changes.",
-        True
+		"Change on input activation",
+		"Changes the color to the values below when the input is pressed.\nNOTE: Might not show correctly or even reset when using the cogwheel to edit another instance.\nAdd an LED, configure, and save profile. Reload before making changes.",
+		True
 )
 
 colourRed = IntegerVariable(
-        "Activation: Red",
-        "Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
-        0,
+		"Activation: Red",
+		"Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
+		0,
 	0,
 	3
 )
 
 colourGreen = IntegerVariable(
-        "Activation: Green",
-        "Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
-        0,
+		"Activation: Green",
+		"Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
+		0,
 	0,
 	3
 )
 
 colourBlue = IntegerVariable(
-        "Activation: Blue",
-        "Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
-        0,
+		"Activation: Blue",
+		"Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
+		0,
 	0,
 	3
 )
 
 changeOnDeactivation = BoolVariable(
-        "Change on input deactivation",
-        "Changes the color to the values below when the input is released.\nNOTE: Might not show correctly or even reset when using the cogwheel to edit another instance.\nAdd an LED, configure, and save profile. Reload bedfre making changes.",
-        False
+		"Change on input deactivation",
+		"Changes the color to the values below when the input is released.\nNOTE: Might not show correctly or even reset when using the cogwheel to edit another instance.\nAdd an LED, configure, and save profile. Reload bedfre making changes.",
+		False
 )
 
 defaultRed = IntegerVariable(
-        "Deactivation: Red",
-        "Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
-        0,
+		"Deactivation: Red",
+		"Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
+		0,
 	0,
 	3
 )
 
 defaultGreen = IntegerVariable(
-        "Deactivation: Green",
-        "Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
-        0,
+		"Deactivation: Green",
+		"Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
+		0,
 	0,
 	3
 )
 
 defaultBlue = IntegerVariable(
-        "Deactivation: Blue",
-        "Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
-        0,
+		"Deactivation: Blue",
+		"Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
+		0,
 	0,
 	3
 )
+
+class MThreading(object):
+    def __init__(self):
+        self.threads = []
+
+    def _run_thread(self, fn, *args, **kwargs):
+        self.threads = [t for t in self.threads if t.is_alive()]
+        thread = threading.Thread(target=fn, args=args, kwargs=kwargs)
+        thread.daemon = True
+        thread.start()
+        self.threads.append(thread)
+
+
+MT = MThreading()
 
 
 class LEDHandler(object):
@@ -292,38 +303,42 @@ class LEDHandler(object):
 		self.joy = joy
 		self.colourStack = 0
 		self.nextColourTime = None
+		self.init()
 		if displayDelay.value > 0:
 			self.nextColourTime = datetime.utcnow()
-		self.colourMain()
 		
+	def init(self):
+		self.cv = ["00", "40", "80", "FF"]
+		self.deviceDict = {}
+				
 	def colourMain(self):
-		buGuid = f"{ledDeviceInput.device_guid}"
-		if buGuid not in deviceDict:
+		self.buGuid = f"{ledDeviceInput.device_guid}"
+		if self.buGuid not in self.deviceDict:
 			# run once, or if device has been added at run time
 			self.listDevices()
 
-		vID = deviceDict[ buGuid ][ 'vID' ]
-		pID = deviceDict[ buGuid ][ 'dID' ]
+		vID = self.deviceDict[ self.buGuid ][ 'vID' ]
+		pID = self.deviceDict[ self.buGuid ][ 'dID' ]
 
 		ledArray = ledNumbers.value.split()
 
 		thisTime = datetime.utcnow()
-		gNextColourTime = datetime.utcnow()
+		self.nextColourTime = datetime.utcnow()
 		if self.event.is_pressed and changeOnActivation.value:
 			for ledNumber in ledArray:
 				self.doColour(vid=vID, pid=pID, led=ledNumber,
-					r=cv[ colourRed.value ], g=cv[ colourGreen.value ], b=cv[ colourBlue.value ])
+					r=self.cv[ colourRed.value ], g=self.cv[ colourGreen.value ], b=self.cv[ colourBlue.value ])
 		if displayDelay.value > 0:
-			gNextColourTime = datetime.utcnow() + timedelta(milliseconds=displayDelay.value)
-		while thisTime < gNextColourTime:
+			self.nextColourTime = datetime.utcnow() + timedelta(milliseconds=displayDelay.value)
+		while thisTime < self.nextColourTime:
 			sleep( 0.01 )
 			thisTime = datetime.utcnow()
 		if not self.event.is_pressed and changeOnDeactivation.value:
 			for ledNumber in ledArray:
 				self.doColour(vid=vID, pid=pID, led=ledNumber,
-					r=cv[ defaultRed.value ], g=cv[ defaultGreen.value ], b=cv[ defaultBlue.value ])
-
-	def doColour(self, vid, pid, led="01", r=cv[ 0 ], g=cv[ 0 ], b=cv[ 0 ]):
+					r=self.cv[ defaultRed.value ], g=self.cv[ defaultGreen.value ], b=self.cv[ defaultBlue.value ])
+		
+	def doColour(self, vid, pid, r, g, b, led="01"):
 		if self.colourStack > 0:
 			# getting too complex
 			return
@@ -342,13 +357,15 @@ class LEDHandler(object):
 			dGuid = f"{ d.__dict__['device_guid'] }"
 			vID = f"{d.__dict__['vendor_id']:04x}"
 			dID = f"{d.__dict__['product_id']:04x}"
-			deviceDict[ dGuid ]= { 'vID': vID, 'dID' : dID }
+			self.deviceDict[ dGuid ]= { 'vID': vID, 'dID' : dID }
 
 
 bPress = buttonPress.create_decorator(mode.value)
+MT = MThreading()
 
 @bPress.button(buttonPress.input_id)
 def myColour(event, vjoy, joy):
 	lh = LEDHandler(event, vjoy, joy)
+	MT._run_thread(lh.colourMain)
 
 # EOF
