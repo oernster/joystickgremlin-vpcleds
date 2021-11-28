@@ -1,7 +1,12 @@
 # joystickgremlin_vpcleds
 Plugin to Joystick Gremlin to enable control over Virpil control panel LEDs
 
-FYI there is currently a relative import bug in the code.  This is probably the most DIFFICULT problem to solve in Python but I will address is ASAP.
+# Version 2.3.0
+
+# Features: 
+1) Change one or more LED colours on activation or deactivation of a button, optionally with timeout.
+2) Momentary button state control for LEDs e.g. landing gear lights when your game only has a single button to control this.
+3) Blinking between LED colour states continually support with configurable timer.
 
 # Instructions for use
 Download the VPC_LEDs.py file and then put it somewhere safe on your PC.
