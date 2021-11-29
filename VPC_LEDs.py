@@ -6,17 +6,12 @@ It uses Virpil's software to talk to your devices.
 You can send aUEC tips in Star Citizen to IsaacHeron. Or gift me a Carrack :D
 Contact me in SC, E:D, on the Virpil forums or /r/HOTAS Discord (IsaacHeron everywhere). Isaac-H on Reddit.
 
-Enhancements by Oliver Ernster aka Cmdr ASmallFurryRodent
-I can be contacted on /r/HOTASDiscord or in a lot of E:D discords.
-------------------------------------------------------------------
-a) Significantly faster LED responses and improved delay handling.
-b) Made it a class and did some refactoring to make the code more elegant.
-c) Added stateful button momentary presses so you can, for example, press a momentary button to set landing 
+Enhancements by Oliver Ernster aka Cmdr ASmallFurryRodent for faster LED responses and improved delay handling.
+Also made it a class and did some refactoring to make the code more elegant.
+NEW: Added stateful button momentary presses so you can, for example, press a momentary button to set landing 
 gear LEDs and they will stay on until you press the button again; basically, sometimes you don't want it to 
-timeout or immediately turn off.  
-d) Blinking LED(s) capability added with optional timer setting.  Now with disable blinking and hold/momentary 
-button options for however you want to control blinking.
-
+timeout or immediately turn off.  Also NEW: Blinking LED(s) capability added.
+I can be contacted on /r/HOTASDiscord or in a lot of E:D discords.
 
 Or thank the original script author, Painter, on whose plugin this one is based.
 
@@ -240,6 +235,12 @@ ledNumbers = StringVariable(
 			"LEDs to be lit, space seperated list.\nDoes NOT correspond to the button numbers on the device\nor VPC Config tool! See plugin code for details!",
 )
 
+ledState = BoolVariable(
+		"Retain state of LEDs until pressed again",
+		"Keeps LEDs in activation colour state until primary button pressed again to revert to deactivation state.  (Deactivation flag will be ignored)",
+		False
+)
+
 displayDelay = IntegerVariable(
 		"Delay (ms)",
 		"Minimum time im milliseconds the color will be changed/shown for.\nDelays the following color changes by the set amount of ms\nand might freeze/delay virtual Gremlin input.\nKeep at default 1ms if possible.",
@@ -255,7 +256,7 @@ changeOnActivation = BoolVariable(
 )
 
 colourRed = IntegerVariable(
-		"Activation: Red",
+		"Activation/Blink primary: Red",
 		"Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
 		0,
 	0,
@@ -263,7 +264,7 @@ colourRed = IntegerVariable(
 )
 
 colourGreen = IntegerVariable(
-		"Activation: Green",
+		"Activation/Blink primary: Green",
 		"Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
 		0,
 	0,
@@ -271,7 +272,7 @@ colourGreen = IntegerVariable(
 )
 
 colourBlue = IntegerVariable(
-		"Activation: Blue",
+		"Activation/Blink primary: Blue",
 		"Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
 		0,
 	0,
@@ -308,12 +309,6 @@ defaultBlue = IntegerVariable(
 	3
 )
 
-ledState = BoolVariable(
-		"Retain state of LEDs until pressed again",
-		"Keeps LEDs in activation colour state until primary button pressed again to revert to second state.  (Deactivation will be ignored)",
-		False
-)
-
 blink = BoolVariable(
 		"Blink between LED colour states until deactivated",
 		"Switch between state 1 (activation colour) and state 2 (state 2 colour) until deactivated or state button pressed again.",
@@ -335,7 +330,7 @@ blinkTimer = IntegerVariable(
 )
 
 state2ColourRed = IntegerVariable(
-		"State 2: Red",
+		"Blink Secondary: Red",
 		"Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
 		0,
 	0,
@@ -343,7 +338,7 @@ state2ColourRed = IntegerVariable(
 )
 
 state2ColourGreen = IntegerVariable(
-		"State 2: Green",
+		"Blink Secondary: Green",
 		"Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
 		0,
 	0,
@@ -351,7 +346,7 @@ state2ColourGreen = IntegerVariable(
 )
 
 state2ColourBlue = IntegerVariable(
-		"State 2: Blue",
+		"Blink Secondary: Blue",
 		"Color intensity (Off: 0; Low: 1; Mid: 2; Max: 3)",
 		0,
 	0,
@@ -399,9 +394,9 @@ class LEDHandler(object):
 			if ledNumbers in self.led_state.keys():
 				if self.led_state[ledNumbers]["state"] == 1: 
 					(self.led_state[ledNumbers]).update( { "state": 2,
-												 "red": state2ColourRed,
-												 "green": state2ColourGreen,
-												 "blue": state2ColourBlue } )
+												 "red": state2ColourRed if blink.value else defaultRed,
+												 "green": state2ColourGreen if blink.value else defaultGreen,
+												 "blue": state2ColourBlue if blink.value else defaultBlue } )
 				elif self.led_state[ledNumbers]["state"] == 2: 
 					(self.led_state[ledNumbers]).update({ "state": 1,
 												 "red": colourRed,
