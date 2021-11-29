@@ -1,7 +1,7 @@
 # joystickgremlin_vpcleds
 Plugin to Joystick Gremlin to enable control over Virpil control panel LEDs
 
-# Version 2.5.0
+# Version 2.6.0
 
 # Features: 
 1) Change one or more LED colours on activation or deactivation of a button, optionally with timeout.
@@ -33,7 +33,7 @@ f) Choose your colours; experimentation is key here, the possible values 0, 1, 2
 
 g) If you want a momentary button to be stateful then tick the retain state button and set colour values for the second state press.
 
-h) You can also define the ability to blink between LED colour states and set a timer for this.  Ensure you choose the correct button type as the check box for this; either hold/momentary button in the relevant blink checkbox.  Ensure you set the State 2 colour values for the blinking alternate LED colour setup.
+h) You can also define the ability to blink between primary and secondary LED colour states and set a timer for this; note that the deactivation LED colour(s) are separate from these 2 sets of LED colours.  Ensure you choose the correct button type as the check box for this; either hold/momentary button in the relevant blink checkbox.  The activated LED timer will be ignored in this scenario.
 
 3) Repeat the creation of an instance and setup for each button press on your device that you want.
 
