@@ -9,6 +9,10 @@ Plugin to Joystick Gremlin to enable control over Virpil control panel LEDs
 3) You can now configure blinking between LED colour states continually with a timer setting and also choose whether you want to 
 use a momentary button or a hold button for the purpose.
 
+# Demo
+Here's a downloadable video of a demo of my Virpil Gear with this plugin all configured nicely:
+https://www.dropbox.com/s/w5uh86u9rxxtww7/20211129_170955.mp4?dl=0
+
 # Instructions for use
 Download the VPC_LEDs.py file and then put it somewhere safe on your PC.
 
