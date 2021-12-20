@@ -50,3 +50,9 @@ h) You can also define the ability to blink between primary and secondary LED co
 o7
 
 Oliver aka Cmdr ASmallFurryRodent
+
+# FAQ
+Q) Why can't the plugin see my Virpil device?
+
+A) You are probably using a USB hub instead of plugging directly into your computer.  If you must use a hub, you need to use a powered USB hub or Virpil devices will not be effectively useable.  If you cannot afford a powered USB hub but still need range from your computer, perhaps consider a USB female to USB male extender cable of a suitable length.
+
