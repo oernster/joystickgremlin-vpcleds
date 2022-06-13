@@ -1,4 +1,4 @@
-# joystickgremlin_vpcleds
+# joystick-gremlin-vpcleds
 Plugin to Joystick Gremlin to enable control over Virpil control panel LEDs
 
 # Version 2.6.0
