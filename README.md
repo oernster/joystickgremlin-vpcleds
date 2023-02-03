@@ -1,6 +1,8 @@
 # joystick-gremlin-vpcleds
 Plugin to Joystick Gremlin to enable control over Virpil control panel LEDs
 
+## Note: Sadly I can no longer maintain this repository easily as I have sold my HOTAS hardware to focus on other interests.  It is functional though and I do not think it has any obvious bugs so hopefully people can still get enjoyment out of the plugin.
+
 # Version 2.6.0
 
 # Features: 
